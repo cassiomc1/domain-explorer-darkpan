@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+.env
+.tmp_darkpan/
+.DS_Store
+Thumbs.db

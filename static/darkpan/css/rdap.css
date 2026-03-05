@@ -1,0 +1,25 @@
+#last-update {
+    font-size: 0.85rem;
+}
+
+#situacao-filter {
+    min-width: 220px;
+}
+
+.rdap-alert-list .list-group-item {
+    background-color: #191c24;
+}
+
+.modal-content ul {
+    margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
+    .navbar .form-control {
+        width: 100%;
+    }
+
+    #situacao-filter {
+        min-width: 100%;
+    }
+}
