@@ -8,3 +8,4 @@ venv/
 .tmp_darkpan/
 .DS_Store
 Thumbs.db
+web_settings.json
