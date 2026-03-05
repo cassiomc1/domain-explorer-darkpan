@@ -3,15 +3,21 @@
 }
 
 .rdap-logo {
-    width: 28px;
-    height: 28px;
+    width: 42px;
+    height: 42px;
     object-fit: contain;
 }
 
 .rdap-logo-mobile {
-    width: 34px;
-    height: 34px;
+    width: 38px;
+    height: 38px;
     object-fit: contain;
+}
+
+.rdap-brand-title {
+    font-size: 1.19rem;
+    font-weight: 700;
+    line-height: 1;
 }
 
 .rdap-metric-card {
@@ -48,13 +54,13 @@
 }
 
 .rdap-chart-small {
-    height: 240px;
-    max-height: 240px;
+    height: 280px;
+    max-height: 280px;
 }
 
 .rdap-chart-large {
-    height: 320px;
-    max-height: 320px;
+    height: 280px;
+    max-height: 280px;
 }
 
 .rdap-chart-small canvas,
