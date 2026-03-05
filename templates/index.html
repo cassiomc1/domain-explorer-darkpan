@@ -5,7 +5,7 @@
     <title>Domain Explorer - DarkPan Dashboard</title>
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
 
-    <link href="{{ url_for('static', filename='darkpan/img/favicon.ico') }}" rel="icon">
+    <link href="{{ url_for('static', filename='darkpan/img/domain_12054416.png') }}" rel="icon" type="image/png">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,7 +31,10 @@
     <div class="sidebar pe-4 pb-3">
         <nav class="navbar bg-secondary navbar-dark">
             <a href="{{ url_for('index') }}" class="navbar-brand mx-4 mb-3">
-                <h3 class="text-primary"><i class="fa fa-globe-americas me-2"></i>Domain Explorer</h3>
+                <h3 class="text-primary d-flex align-items-center mb-0">
+                    <img src="{{ url_for('static', filename='darkpan/img/domain_12054416.png') }}" alt="Domain Explorer" class="rdap-logo me-2">
+                    Domain Explorer
+                </h3>
             </a>
             <div class="d-flex align-items-center ms-4 mb-4">
                 <div class="position-relative">
@@ -47,7 +50,8 @@
                 <a href="#stats" class="nav-item nav-link rdap-nav-link active"><i class="fa fa-tachometer-alt me-2"></i>Dashboard</a>
                 <a href="#dominios" class="nav-item nav-link rdap-nav-link"><i class="fa fa-table me-2"></i>Domínios</a>
                 <a href="#alertas" class="nav-item nav-link rdap-nav-link"><i class="fa fa-bell me-2"></i>Alertas</a>
-                <a href="#stats" class="nav-item nav-link rdap-nav-link"><i class="fa fa-chart-bar me-2"></i>Estatísticas</a>
+                <a href="#email-config" class="nav-item nav-link rdap-nav-link"><i class="fa fa-envelope me-2"></i>Email</a>
+                <a href="#schedule-config" class="nav-item nav-link rdap-nav-link"><i class="fa fa-clock me-2"></i>Agendamento</a>
                 <a href="/api/exportar-csv" class="nav-item nav-link"><i class="fa fa-file-csv me-2"></i>Exportar CSV</a>
             </div>
         </nav>
@@ -56,7 +60,7 @@
     <div class="content">
         <nav class="navbar navbar-expand bg-secondary navbar-dark sticky-top px-4 py-0">
             <a href="{{ url_for('index') }}" class="navbar-brand d-flex d-lg-none me-4">
-                <h2 class="text-primary mb-0"><i class="fa fa-globe-americas"></i></h2>
+                <img src="{{ url_for('static', filename='darkpan/img/domain_12054416.png') }}" alt="Domain Explorer" class="rdap-logo-mobile">
             </a>
             <a href="#" class="sidebar-toggler flex-shrink-0">
                 <i class="fa fa-bars"></i>
@@ -116,19 +120,23 @@
         <div class="container-fluid pt-4 px-4">
             <div class="row g-4">
                 <div class="col-sm-12 col-xl-6">
-                    <div class="bg-secondary text-center rounded p-4">
+                    <div class="bg-secondary rounded p-4">
                         <div class="d-flex align-items-center justify-content-between mb-4">
                             <h6 class="mb-0">Domínios por Situação</h6>
                         </div>
-                        <canvas id="chart-situacoes"></canvas>
+                        <div class="rdap-chart-small">
+                            <canvas id="chart-situacoes"></canvas>
+                        </div>
                     </div>
                 </div>
                 <div class="col-sm-12 col-xl-6">
-                    <div class="bg-secondary text-center rounded p-4">
+                    <div class="bg-secondary rounded p-4">
                         <div class="d-flex align-items-center justify-content-between mb-4">
                             <h6 class="mb-0">Evolução de Consultas (30 dias)</h6>
                         </div>
-                        <canvas id="chart-evolucao"></canvas>
+                        <div class="rdap-chart-large">
+                            <canvas id="chart-evolucao"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -176,6 +184,86 @@
                     <h6 class="mb-0">Alertas Ativos</h6>
                 </div>
                 <div id="alertas-list" class="list-group rdap-alert-list"></div>
+            </div>
+        </div>
+
+        <div class="container-fluid pt-4 px-4" id="email-config">
+            <div class="bg-secondary rounded p-4">
+                <h6 class="mb-4">Configuração de Email</h6>
+                <form id="email-config-form" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">SMTP Server</label>
+                        <input type="text" class="form-control bg-dark border-0 text-light" id="email-smtp-server" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Porta</label>
+                        <input type="number" class="form-control bg-dark border-0 text-light" id="email-smtp-port" min="1" max="65535" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Remetente</label>
+                        <input type="email" class="form-control bg-dark border-0 text-light" id="email-remetente" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Senha SMTP</label>
+                        <input type="password" class="form-control bg-dark border-0 text-light" id="email-senha" placeholder="Deixe vazio para manter">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Destinatários (separados por vírgula)</label>
+                        <input type="text" class="form-control bg-dark border-0 text-light" id="email-destinatarios" required>
+                    </div>
+                    <div class="col-12 d-flex gap-2">
+                        <button class="btn btn-primary btn-sm" type="submit">Salvar Configuração</button>
+                        <button class="btn btn-outline-light btn-sm" type="button" id="btn-send-now">Enviar Relatório Agora</button>
+                    </div>
+                </form>
+                <div id="email-config-status" class="small mt-3 text-light"></div>
+            </div>
+        </div>
+
+        <div class="container-fluid pt-4 px-4" id="schedule-config">
+            <div class="bg-secondary rounded p-4">
+                <h6 class="mb-4">Agendamento de Relatórios</h6>
+                <form id="schedule-config-form" class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Ativo</label>
+                        <select id="schedule-enabled" class="form-select bg-dark border-0 text-light">
+                            <option value="false">Não</option>
+                            <option value="true">Sim</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Recorrência</label>
+                        <select id="schedule-recurrence" class="form-select bg-dark border-0 text-light">
+                            <option value="daily">Diária</option>
+                            <option value="weekly">Semanal</option>
+                            <option value="monthly">Mensal</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Hora</label>
+                        <input type="time" id="schedule-time" class="form-control bg-dark border-0 text-light" required>
+                    </div>
+                    <div class="col-md-3" id="schedule-weekday-wrap">
+                        <label class="form-label">Dia da semana</label>
+                        <select id="schedule-weekday" class="form-select bg-dark border-0 text-light">
+                            <option value="0">Segunda</option>
+                            <option value="1">Terça</option>
+                            <option value="2">Quarta</option>
+                            <option value="3">Quinta</option>
+                            <option value="4">Sexta</option>
+                            <option value="5">Sábado</option>
+                            <option value="6">Domingo</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-none" id="schedule-monthday-wrap">
+                        <label class="form-label">Dia do mês</label>
+                        <input type="number" min="1" max="31" id="schedule-monthday" class="form-control bg-dark border-0 text-light" value="1">
+                    </div>
+                    <div class="col-12">
+                        <button class="btn btn-primary btn-sm" type="submit">Salvar Agendamento</button>
+                    </div>
+                </form>
+                <div id="schedule-config-status" class="small mt-3 text-light"></div>
             </div>
         </div>
 

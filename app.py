@@ -9,10 +9,162 @@ import sqlite3
 from datetime import datetime
 import json
 import csv
+import os
+import threading
 from io import StringIO
+from consulta_whois_db import EMAIL_CONFIG, gerar_relatorio_email, enviar_email_relatorio
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
+
+SETTINGS_FILE = 'web_settings.json'
+settings_lock = threading.Lock()
+scheduler_lock = threading.Lock()
+scheduler_stop_event = threading.Event()
+scheduler_thread = None
+
+DEFAULT_WEB_SETTINGS = {
+    'email': {
+        'smtp_server': EMAIL_CONFIG.get('smtp_server', ''),
+        'smtp_port': int(EMAIL_CONFIG.get('smtp_port', 587)),
+        'remetente': EMAIL_CONFIG.get('remetente', ''),
+        'senha': EMAIL_CONFIG.get('senha', ''),
+        'destinatarios': EMAIL_CONFIG.get('destinatarios', [])
+    },
+    'schedule': {
+        'enabled': False,
+        'recurrence': 'daily',
+        'time': '08:00',
+        'day_of_week': 0,
+        'day_of_month': 1,
+        'last_run': ''
+    }
+}
+
+
+def _deep_copy_defaults():
+    return json.loads(json.dumps(DEFAULT_WEB_SETTINGS))
+
+
+def load_web_settings():
+    if not os.path.exists(SETTINGS_FILE):
+        return _deep_copy_defaults()
+
+    try:
+        with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except Exception:
+        return _deep_copy_defaults()
+
+    merged = _deep_copy_defaults()
+    merged['email'].update(data.get('email', {}))
+    merged['schedule'].update(data.get('schedule', {}))
+    return merged
+
+
+def save_web_settings(settings):
+    with settings_lock:
+        with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(settings, f, ensure_ascii=False, indent=2)
+
+
+def get_web_settings():
+    with settings_lock:
+        return load_web_settings()
+
+
+def _parse_recipients(value):
+    if isinstance(value, list):
+        return [x.strip() for x in value if str(x).strip()]
+    return [x.strip() for x in str(value).split(',') if x.strip()]
+
+
+def apply_email_settings(email_settings):
+    EMAIL_CONFIG['smtp_server'] = email_settings.get('smtp_server', EMAIL_CONFIG.get('smtp_server', ''))
+    EMAIL_CONFIG['smtp_port'] = int(email_settings.get('smtp_port', EMAIL_CONFIG.get('smtp_port', 587)))
+    EMAIL_CONFIG['remetente'] = email_settings.get('remetente', EMAIL_CONFIG.get('remetente', ''))
+    EMAIL_CONFIG['senha'] = email_settings.get('senha', EMAIL_CONFIG.get('senha', ''))
+    EMAIL_CONFIG['destinatarios'] = _parse_recipients(email_settings.get('destinatarios', EMAIL_CONFIG.get('destinatarios', [])))
+
+
+def _validate_time_str(value):
+    try:
+        hh, mm = value.split(':')
+        hour = int(hh)
+        minute = int(mm)
+    except Exception:
+        return False
+    return 0 <= hour <= 23 and 0 <= minute <= 59
+
+
+def _should_run_schedule(now, schedule):
+    if not schedule.get('enabled'):
+        return False
+
+    if not _validate_time_str(schedule.get('time', '')):
+        return False
+
+    hour, minute = [int(x) for x in schedule.get('time', '08:00').split(':')]
+    if now.hour != hour or now.minute != minute:
+        return False
+
+    recurrence = schedule.get('recurrence', 'daily')
+    if recurrence == 'weekly' and now.weekday() != int(schedule.get('day_of_week', 0)):
+        return False
+    if recurrence == 'monthly' and now.day != int(schedule.get('day_of_month', 1)):
+        return False
+
+    last_run = schedule.get('last_run', '')
+    if last_run:
+        try:
+            last_run_dt = datetime.fromisoformat(last_run)
+            if last_run_dt.strftime('%Y-%m-%d %H:%M') == now.strftime('%Y-%m-%d %H:%M'):
+                return False
+        except ValueError:
+            pass
+    return True
+
+
+def run_report_once():
+    settings = get_web_settings()
+    apply_email_settings(settings['email'])
+
+    conn = get_db_connection()
+    try:
+        html_content, tem_alertas = gerar_relatorio_email(conn)
+    finally:
+        conn.close()
+
+    return enviar_email_relatorio(html_content, tem_alertas, modo_teste=False)
+
+
+def scheduler_loop():
+    while not scheduler_stop_event.is_set():
+        try:
+            settings = get_web_settings()
+            schedule = settings.get('schedule', {})
+            now = datetime.now()
+
+            if _should_run_schedule(now, schedule):
+                with scheduler_lock:
+                    success = run_report_once()
+                    if success:
+                        settings = get_web_settings()
+                        settings['schedule']['last_run'] = now.isoformat()
+                        save_web_settings(settings)
+        except Exception as exc:
+            print(f'Erro no scheduler: {exc}')
+
+        scheduler_stop_event.wait(30)
+
+
+def start_scheduler():
+    global scheduler_thread
+    if scheduler_thread and scheduler_thread.is_alive():
+        return
+    scheduler_stop_event.clear()
+    scheduler_thread = threading.Thread(target=scheduler_loop, daemon=True)
+    scheduler_thread.start()
 
 def get_db_connection():
     """Cria conexão com o banco de dados"""
@@ -403,13 +555,99 @@ def estatisticas():
         'mais_consultados': mais_consultados
     })
 
+
+@app.route('/api/config/email', methods=['GET'])
+def get_email_config():
+    settings = get_web_settings()
+    return jsonify(settings['email'])
+
+
+@app.route('/api/config/email', methods=['POST'])
+def set_email_config():
+    payload = request.get_json(silent=True) or {}
+
+    smtp_server = str(payload.get('smtp_server', '')).strip()
+    remetente = str(payload.get('remetente', '')).strip()
+    senha = payload.get('senha', '')
+    destinatarios = _parse_recipients(payload.get('destinatarios', []))
+
+    try:
+        smtp_port = int(payload.get('smtp_port', 587))
+    except Exception:
+        return jsonify({'error': 'Porta SMTP inválida'}), 400
+
+    if not smtp_server or not remetente or not destinatarios:
+        return jsonify({'error': 'Preencha servidor SMTP, remetente e destinatários'}), 400
+
+    settings = get_web_settings()
+    settings['email']['smtp_server'] = smtp_server
+    settings['email']['smtp_port'] = smtp_port
+    settings['email']['remetente'] = remetente
+    if str(senha).strip():
+        settings['email']['senha'] = senha
+    settings['email']['destinatarios'] = destinatarios
+
+    save_web_settings(settings)
+    apply_email_settings(settings['email'])
+    return jsonify({'success': True})
+
+
+@app.route('/api/config/schedule', methods=['GET'])
+def get_schedule_config():
+    settings = get_web_settings()
+    return jsonify(settings['schedule'])
+
+
+@app.route('/api/config/schedule', methods=['POST'])
+def set_schedule_config():
+    payload = request.get_json(silent=True) or {}
+
+    recurrence = str(payload.get('recurrence', 'daily')).strip().lower()
+    if recurrence not in ('daily', 'weekly', 'monthly'):
+        return jsonify({'error': 'Recorrência inválida'}), 400
+
+    time_value = str(payload.get('time', '08:00')).strip()
+    if not _validate_time_str(time_value):
+        return jsonify({'error': 'Hora inválida (use HH:MM)'}), 400
+
+    try:
+        day_of_week = int(payload.get('day_of_week', 0))
+        day_of_month = int(payload.get('day_of_month', 1))
+    except Exception:
+        return jsonify({'error': 'Valores de dia inválidos'}), 400
+
+    day_of_week = max(0, min(6, day_of_week))
+    day_of_month = max(1, min(31, day_of_month))
+
+    settings = get_web_settings()
+    settings['schedule']['enabled'] = bool(payload.get('enabled', False))
+    settings['schedule']['recurrence'] = recurrence
+    settings['schedule']['time'] = time_value
+    settings['schedule']['day_of_week'] = day_of_week
+    settings['schedule']['day_of_month'] = day_of_month
+
+    save_web_settings(settings)
+    return jsonify({'success': True})
+
+
+@app.route('/api/scheduler/run-now', methods=['POST'])
+def scheduler_run_now():
+    success = run_report_once()
+    if success:
+        return jsonify({'success': True})
+    return jsonify({'error': 'Falha ao enviar relatório'}), 500
+
 if __name__ == '__main__':
+    start_scheduler()
+    apply_email_settings(get_web_settings()['email'])
+
     print("="*60)
     print("🌐 Interface Web RDAP Dashboard")
     print("="*60)
     print("\n✓ Servidor iniciando...")
     print("✓ Acesse: http://localhost:5000")
+    print("✓ Scheduler de relatórios ativo")
     print("\n⚠️  Pressione CTRL+C para encerrar\n")
     print("="*60 + "\n")
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5000, use_reloader=False)

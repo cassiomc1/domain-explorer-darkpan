@@ -2,6 +2,18 @@
     font-size: 0.85rem;
 }
 
+.rdap-logo {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+}
+
+.rdap-logo-mobile {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+}
+
 .rdap-metric-card {
     border: 1px solid rgba(108, 114, 147, 0.2);
     transition: transform 0.25s ease, border-color 0.25s ease;
@@ -33,6 +45,29 @@
 
 .rdap-nav-link {
     scroll-behavior: smooth;
+}
+
+.rdap-chart-small {
+    height: 240px;
+    max-height: 240px;
+}
+
+.rdap-chart-large {
+    height: 320px;
+    max-height: 320px;
+}
+
+.rdap-chart-small canvas,
+.rdap-chart-large canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+#email-config .form-label,
+#schedule-config .form-label {
+    color: #a8adbf;
+    font-size: 0.85rem;
+    margin-bottom: 0.4rem;
 }
 
 #dominioModalBody h6 {

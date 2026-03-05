@@ -50,6 +50,90 @@ async function fetchJson(url) {
     return response.json();
 }
 
+async function fetchJsonWithBody(url, method, data) {
+    const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+        throw new Error(payload.error || `Falha em ${url}`);
+    }
+    return payload;
+}
+
+function setStatus(targetId, message, isError = false) {
+    const el = document.getElementById(targetId);
+    if (!el) return;
+    el.textContent = message;
+    el.classList.remove('text-danger', 'text-success', 'text-warning', 'text-light');
+    el.classList.add(isError ? 'text-danger' : 'text-success');
+}
+
+function updateScheduleVisibility() {
+    const recurrence = document.getElementById('schedule-recurrence').value;
+    const weekdayWrap = document.getElementById('schedule-weekday-wrap');
+    const monthdayWrap = document.getElementById('schedule-monthday-wrap');
+    weekdayWrap.classList.toggle('d-none', recurrence !== 'weekly');
+    monthdayWrap.classList.toggle('d-none', recurrence !== 'monthly');
+}
+
+function fillEmailForm(email) {
+    document.getElementById('email-smtp-server').value = email.smtp_server || '';
+    document.getElementById('email-smtp-port').value = email.smtp_port || 587;
+    document.getElementById('email-remetente').value = email.remetente || '';
+    document.getElementById('email-senha').value = '';
+    document.getElementById('email-destinatarios').value = (email.destinatarios || []).join(', ');
+}
+
+function fillScheduleForm(schedule) {
+    document.getElementById('schedule-enabled').value = String(!!schedule.enabled);
+    document.getElementById('schedule-recurrence').value = schedule.recurrence || 'daily';
+    document.getElementById('schedule-time').value = schedule.time || '08:00';
+    document.getElementById('schedule-weekday').value = String(schedule.day_of_week ?? 0);
+    document.getElementById('schedule-monthday').value = String(schedule.day_of_month ?? 1);
+    updateScheduleVisibility();
+}
+
+async function loadConfigs() {
+    const [emailConfig, scheduleConfig] = await Promise.all([
+        fetchJson('/api/config/email'),
+        fetchJson('/api/config/schedule')
+    ]);
+    fillEmailForm(emailConfig);
+    fillScheduleForm(scheduleConfig);
+}
+
+async function saveEmailConfig() {
+    const payload = {
+        smtp_server: document.getElementById('email-smtp-server').value.trim(),
+        smtp_port: Number(document.getElementById('email-smtp-port').value),
+        remetente: document.getElementById('email-remetente').value.trim(),
+        senha: document.getElementById('email-senha').value,
+        destinatarios: document.getElementById('email-destinatarios').value.trim()
+    };
+    await fetchJsonWithBody('/api/config/email', 'POST', payload);
+    setStatus('email-config-status', 'Configuração de email salva com sucesso.');
+}
+
+async function saveScheduleConfig() {
+    const payload = {
+        enabled: document.getElementById('schedule-enabled').value === 'true',
+        recurrence: document.getElementById('schedule-recurrence').value,
+        time: document.getElementById('schedule-time').value,
+        day_of_week: Number(document.getElementById('schedule-weekday').value),
+        day_of_month: Number(document.getElementById('schedule-monthday').value)
+    };
+    await fetchJsonWithBody('/api/config/schedule', 'POST', payload);
+    setStatus('schedule-config-status', 'Agendamento salvo com sucesso.');
+}
+
+async function sendReportNow() {
+    await fetchJsonWithBody('/api/scheduler/run-now', 'POST', {});
+    setStatus('email-config-status', 'Relatório enviado agora com sucesso.');
+}
+
 function renderMetrics(data, alertasCount) {
     document.getElementById('metric-total-consultas').textContent = data.total_consultas || 0;
     document.getElementById('metric-dominios-unicos').textContent = data.dominios_unicos || 0;
@@ -134,7 +218,7 @@ function renderCharts(stats) {
                 ]
             }]
         },
-        options: { responsive: true }
+        options: { responsive: true, maintainAspectRatio: false }
     });
 
     chartEvolucao = new Chart(ctxEvolucao, {
@@ -150,7 +234,7 @@ function renderCharts(stats) {
                 tension: 0.25
             }]
         },
-        options: { responsive: true }
+        options: { responsive: true, maintainAspectRatio: false }
     });
 }
 
@@ -231,6 +315,10 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error(error);
     });
 
+    loadConfigs().catch((error) => {
+        setStatus('email-config-status', error.message, true);
+    });
+
     document.getElementById('btn-refresh').addEventListener('click', (event) => {
         event.preventDefault();
         loadAll().catch((error) => console.error(error));
@@ -254,5 +342,33 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!button) return;
         const dominioId = button.getAttribute('data-dominio-id');
         loadDominioDetails(dominioId).catch((error) => console.error(error));
+    });
+
+    document.getElementById('schedule-recurrence').addEventListener('change', updateScheduleVisibility);
+
+    document.getElementById('email-config-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        try {
+            await saveEmailConfig();
+        } catch (error) {
+            setStatus('email-config-status', error.message, true);
+        }
+    });
+
+    document.getElementById('schedule-config-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        try {
+            await saveScheduleConfig();
+        } catch (error) {
+            setStatus('schedule-config-status', error.message, true);
+        }
+    });
+
+    document.getElementById('btn-send-now').addEventListener('click', async () => {
+        try {
+            await sendReportNow();
+        } catch (error) {
+            setStatus('email-config-status', error.message, true);
+        }
     });
 });
