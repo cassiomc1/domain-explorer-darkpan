@@ -13,6 +13,12 @@ Painel web para monitoramento RDAP de domínios com interface baseada no tema of
   - Lista de alertas
 - Integração da UI com APIs existentes (`/api/*`) sem quebra de contrato.
 - Relatório de e-mail (`consulta_whois_db.py`) atualizado para visual inspirado no DarkPan com CSS inline compatível com clientes de e-mail.
+- Painel de configuração SMTP direto na interface web.
+- Agendamento de envio de relatórios via interface:
+  - Recorrência `daily`, `weekly` ou `monthly`
+  - Definição de hora de envio
+  - Disparo manual imediato de relatório
+- Branding customizado com logo próprio no canto superior esquerdo e favicon.
 
 ## Estrutura principal
 
@@ -23,6 +29,7 @@ Painel web para monitoramento RDAP de domínios com interface baseada no tema of
 - `static/darkpan/js/rdap-dashboard.js`: consumo das APIs e renderização dinâmica.
 - `static/darkpan/css/rdap.css`: ajustes visuais específicos do Domain Explorer.
 - `consulta_whois_db.py`: coleta RDAP e geração/envio de relatório HTML por e-mail.
+- `web_settings.json`: persistência local da configuração de e-mail e agendamento (arquivo gerado em runtime).
 
 ## Como executar
 
@@ -45,6 +52,18 @@ python app.py
 - `GET /api/stats`
 - `GET /api/dominio/<id>`
 - `GET /api/exportar-csv`
+- `GET /api/config/email`
+- `POST /api/config/email`
+- `GET /api/config/schedule`
+- `POST /api/config/schedule`
+- `POST /api/scheduler/run-now`
+
+## Configuração de e-mail e agenda
+
+- A configuração pode ser feita em `Email` e `Agendamento` dentro do dashboard.
+- O backend salva as preferências em `web_settings.json`.
+- O scheduler roda em background no processo Flask e verifica o horário configurado para envio.
+- `web_settings.json` está no `.gitignore` para evitar versionar credenciais locais.
 
 ## Relatório de e-mail
 
