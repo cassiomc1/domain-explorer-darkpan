@@ -231,8 +231,10 @@ def exportar_csv():
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     filename = f'dominios_rdap_{timestamp}.csv'
     
+    csv_content = '\ufeff' + output.getvalue()
+
     return Response(
-        output.getvalue(),
+        csv_content,
         mimetype='text/csv',
         headers={
             'Content-Disposition': f'attachment; filename={filename}',

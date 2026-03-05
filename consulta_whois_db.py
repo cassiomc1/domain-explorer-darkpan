@@ -23,6 +23,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
+from email.header import Header
 import csv
 from io import StringIO
 
@@ -764,11 +765,13 @@ def enviar_email_relatorio(html_content, tem_alertas, modo_teste=False):
         
         # Define assunto baseado no modo e alertas
         if modo_teste:
-            msg['Subject'] = f"✅ TESTE - Sistema RDAP - {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+            assunto = f"✅ TESTE - Sistema RDAP - {datetime.now().strftime('%d/%m/%Y %H:%M')}"
         elif tem_alertas:
-            msg['Subject'] = f"⚠️ ALERTA - Relatório de Domínios RDAP - {datetime.now().strftime('%d/%m/%Y')}"
+            assunto = f"⚠️ ALERTA - Relatório de Domínios RDAP - {datetime.now().strftime('%d/%m/%Y')}"
         else:
-            msg['Subject'] = f"✅ Relatório de Domínios RDAP - {datetime.now().strftime('%d/%m/%Y')}"
+            assunto = f"✅ Relatório de Domínios RDAP - {datetime.now().strftime('%d/%m/%Y')}"
+
+        msg['Subject'] = str(Header(assunto, 'utf-8'))
         
         # Anexa HTML
         parte_html = MIMEText(html_content, 'html', 'utf-8')
