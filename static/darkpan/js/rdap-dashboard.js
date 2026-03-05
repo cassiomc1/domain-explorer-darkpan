@@ -1,6 +1,9 @@
 let chartSituacoes = null;
 let chartEvolucao = null;
 
+Chart.defaults.color = '#6C7293';
+Chart.defaults.borderColor = '#000000';
+
 function escapeHtml(value) {
     if (value === null || value === undefined) {
         return '';
@@ -156,6 +159,9 @@ async function loadDominioDetails(dominioId) {
     const modalTitle = document.getElementById('dominioModalTitle');
     const modalBody = document.getElementById('dominioModalBody');
 
+    const entidades = (data.entidades || []).map((entidade) => entidade.handle || entidade.nome || '-');
+    const dnssec = (data.dnssec || []).map((item) => item.key_tag || item.algoritmo || item.delegacao_assinada || '-');
+
     modalTitle.textContent = `Detalhes: ${data.dominio?.dominio || ''}`;
     modalBody.innerHTML = `
         <div class="row g-3">
@@ -167,6 +173,12 @@ async function loadDominioDetails(dominioId) {
         <hr class="border-secondary">
         <h6 class="mb-2">Nameservers</h6>
         <ul>${(data.nameservers || []).map((ns) => `<li>${escapeHtml(ns.ldh_name || '-')}</li>`).join('') || '<li>-</li>'}</ul>
+        <hr class="border-secondary">
+        <h6 class="mb-2">Entidades</h6>
+        <ul>${entidades.map((item) => `<li>${escapeHtml(item)}</li>`).join('') || '<li>-</li>'}</ul>
+        <hr class="border-secondary">
+        <h6 class="mb-2">DNSSEC</h6>
+        <ul>${dnssec.map((item) => `<li>${escapeHtml(item)}</li>`).join('') || '<li>-</li>'}</ul>
     `;
 
     const modal = new bootstrap.Modal(document.getElementById('dominioModal'));
@@ -208,6 +220,13 @@ async function loadAll() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.rdap-nav-link').forEach((link) => {
+        link.addEventListener('click', () => {
+            document.querySelectorAll('.rdap-nav-link').forEach((item) => item.classList.remove('active'));
+            link.classList.add('active');
+        });
+    });
+
     loadAll().catch((error) => {
         console.error(error);
     });

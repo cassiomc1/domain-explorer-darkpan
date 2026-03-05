@@ -2,12 +2,45 @@
     font-size: 0.85rem;
 }
 
+.rdap-metric-card {
+    border: 1px solid rgba(108, 114, 147, 0.2);
+    transition: transform 0.25s ease, border-color 0.25s ease;
+}
+
+.rdap-metric-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(235, 22, 22, 0.55);
+}
+
 #situacao-filter {
     min-width: 220px;
 }
 
 .rdap-alert-list .list-group-item {
     background-color: #191c24;
+}
+
+.rdap-domain-table thead th {
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #a8adbf;
+}
+
+.rdap-domain-table tbody td {
+    vertical-align: middle;
+}
+
+.rdap-nav-link {
+    scroll-behavior: smooth;
+}
+
+#dominioModalBody h6 {
+    color: #eb1616;
+}
+
+#dominioModalBody li {
+    color: #d8dbe6;
 }
 
 .modal-content ul {
@@ -21,5 +54,9 @@
 
     #situacao-filter {
         min-width: 100%;
+    }
+
+    .rdap-domain-table {
+        min-width: 760px;
     }
 }
